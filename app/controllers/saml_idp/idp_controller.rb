@@ -1,17 +1,11 @@
 # encoding: utf-8
-
 module SamlIdp
   class IdpController < ActionController::Base
     include SamlIdp::Controller
 
     unloadable unless Rails::VERSION::MAJOR >= 4
     protect_from_forgery
-
-    if Rails::VERSION::MAJOR >= 4
-      before_action :validate_saml_request, only: [:new, :create, :logout]
-    else
-      before_filter :validate_saml_request, only: [:new, :create, :logout]
-    end
+    before_action :validate_saml_request, only: [:new, :create]
 
     def new
       render template: "saml_idp/idp/new"
@@ -38,7 +32,7 @@ module SamlIdp
     def logout
       idp_logout
       @saml_response = idp_make_saml_response(nil)
-      # render :template => "saml_idp/idp/saml_post", :layout => false
+      render :template => "saml_idp/idp/saml_post_logout", :layout => false
     end
 
     def idp_logout

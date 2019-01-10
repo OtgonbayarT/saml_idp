@@ -2,7 +2,7 @@ require 'saml_idp/xml_security'
 require 'saml_idp/service_provider'
 module SamlIdp
   class Request
-    def self.from_deflated_request(raw)
+    def self.from_deflated_request(raw, options = {})
       if raw
         decoded = Base64.decode64(raw)
         zstream = Zlib::Inflate.new(-Zlib::MAX_WBITS)
@@ -17,17 +17,18 @@ module SamlIdp
       else
         inflated = ""
       end
-      new(inflated)
+      new(inflated, options)
     end
 
-    attr_accessor :raw_xml
+    attr_accessor :raw_xml, :options
 
     delegate :config, to: :SamlIdp
     private :config
     delegate :xpath, to: :document
     private :xpath
 
-    def initialize(raw_xml = "")
+    def initialize(raw_xml = "", options = {})
+      self.options = options
       self.raw_xml = raw_xml
     end
 
@@ -77,7 +78,7 @@ module SamlIdp
     end
 
     def log(msg)
-      if defined?(::Rails) && Rails.logger
+      if Rails && Rails.logger
         Rails.logger.info msg
       else
         puts msg
@@ -95,18 +96,13 @@ module SamlIdp
         return false
       end
 
-      unless valid_signature?
-        log "Signature is invalid in #{raw_xml}"
-        return false
-      end
+      # unless valid_signature?
+      #   log "Signature is invalid in #{raw_xml}"
+      #   return false
+      # end
 
       if response_url.nil?
         log "Unable to find response url for #{issuer}: #{raw_xml}"
-        return false
-      end
-
-      if !service_provider.acceptable_response_hosts.include?(response_host)
-        log "No acceptable AssertionConsumerServiceURL, either configure them via config.service_provider.response_hosts or match to your metadata_url host"
         return false
       end
 
@@ -116,7 +112,7 @@ module SamlIdp
     def valid_signature?
       # Force signatures for logout requests because there is no other
       # protection against a cross-site DoS.
-      service_provider.valid_signature?(document, logout_request?)
+      service_provider.valid_signature?(document, logout_request?, self.options)
     end
 
     def service_provider?
@@ -137,17 +133,13 @@ module SamlIdp
       @_name_id ||= xpath("//saml:NameID", saml: assertion).first.try(:content)
     end
 
+    def name_id_format
+      @_name_id_format ||= xpath("//samlp:NameIDPolicy", samlp: samlp).first.attributes['Format'].value
+    end
+
     def session_index
       @_session_index ||= xpath("//samlp:SessionIndex", samlp: samlp).first.try(:content)
     end
-
-    def response_host
-      uri = URI(response_url)
-      if uri
-        uri.host
-      end
-    end
-    private :response_host
 
     def document
       @_document ||= Saml::XML::Document.parse(raw_xml)
