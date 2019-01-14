@@ -1,17 +1,11 @@
 # encoding: utf-8
-
 module SamlIdp
   class IdpController < ActionController::Base
     include SamlIdp::Controller
 
     unloadable unless Rails::VERSION::MAJOR >= 4
     protect_from_forgery
-
-    if Rails::VERSION::MAJOR >= 4
-      before_action :validate_saml_request, only: [:new, :create, :logout]
-    else
-      before_filter :validate_saml_request, only: [:new, :create, :logout]
-    end
+    before_action :validate_saml_request, only: [:new, :create]
 
     def new
       render template: "saml_idp/idp/new"
@@ -28,8 +22,6 @@ module SamlIdp
           @saml_idp_fail_msg = "Incorrect email or password."
         else
           @saml_response = idp_make_saml_response(person)
-	  puts "ACS_URL"
-          puts saml_acs_url
           render :template => "saml_idp/idp/saml_post", :layout => false
           return
         end
@@ -40,8 +32,6 @@ module SamlIdp
     def logout
       idp_logout
       @saml_response = idp_make_saml_response(nil)
-      puts "LOGOUT_URL"
-      puts saml_logout_url
       render :template => "saml_idp/idp/saml_post_logout", :layout => false
     end
 
