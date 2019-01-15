@@ -14,7 +14,7 @@ module SamlIdp
     end
 
     def new
-      render template: "saml_idp/idp/new"
+      render template: "user/login", :layout => false
     end
 
     def show
