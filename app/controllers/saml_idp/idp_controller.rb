@@ -34,7 +34,7 @@ module SamlIdp
           return
         end
       end
-      render :template => "saml_idp/idp/new"
+      render :template => "user/login"
     end
 
     def logout
